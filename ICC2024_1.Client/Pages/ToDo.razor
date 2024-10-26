@@ -1,0 +1,119 @@
+﻿@page "/todo"
+@rendermode InteractiveAuto
+
+<h3>TODO List</h3>
+
+<div>
+    <input @bind="_newTodo" @onkeyup="OnKeyDown" placeholder="Enter new todo" />
+    <button @onclick="AddTodo">Add</button>
+</div>
+
+<ul class="todo-list">
+    @foreach (ToDoRow tdr in _rows.OrderBy(t => t.ToDo.IsCompleted))
+    {
+        ToDoRow row = tdr;
+        <li>
+            <input type="checkbox" @bind="@row.ToDo.IsCompleted" />
+            @if(row.IsEditing)
+            {
+                <input @onchange="(v) => EditToDo(row.ToDo.Id, (string)v.Value!)" 
+                       @onblur="() => row.IsEditing = false" 
+                       value="@row.ToDo.Text" />
+            }
+            else
+            {
+                <span class="@GetTodoClass(row.ToDo)" 
+                      @onclick="() => row.IsEditing = true">
+                    @row.ToDo.Text
+                </span>
+                
+            }
+            
+            <div>
+                @if (!row.IsEditing)
+                {
+                    <button class="edit" @onclick="@(() => ToggleEditMode(row))">
+                        <i class="fas fa-pencil-alt"></i>
+                    </button>
+                }
+                <button class="delete" @onclick="() => DeleteTodo(row.ToDo.Id)">
+                    <i class="fas fa-trash-alt delete"></i>
+                </button>
+            </div>
+        </li>
+    }
+</ul>
+
+<button class="clear" @onclick="DeleteAll">Clear</button>
+
+@code {
+    [Inject]
+    public required IRepository Repository { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        var todos = await Repository.GetAllAsync<ToDoItem>();
+        _rows = todos.Select(t => new ToDoRow(t)).ToList();
+    }
+
+    private async Task AddTodo()
+    {
+        if (!string.IsNullOrWhiteSpace(_newTodo))
+        {
+            var todo = new ToDoItem(_newTodo, false);
+            todo.Id = await Repository.AddAsync(todo);
+            _rows.Add(new ToDoRow(todo));
+            Console.WriteLine($"Added new todo: {_newTodo}");
+            _newTodo = string.Empty;
+        }
+    }
+
+    private string GetTodoClass(ToDoItem todo)
+    {
+        return todo.IsCompleted ? "completed" : string.Empty;
+    }
+
+    private async Task OnKeyDown(KeyboardEventArgs args)
+    {
+        if (args.Key == "Enter")
+        {
+            await AddTodo();
+        }
+    }
+
+    private void ToggleEditMode(ToDoRow row)
+    {
+        row.IsEditing = !row.IsEditing;
+
+    }
+
+    private async Task EditToDo(int id, string newText)
+    {
+        ToDoItem todo = _rows.First(t => t.ToDo.Id == id).ToDo;
+        todo.Text = newText;
+        await Repository.UpdateAsync<ToDoItem>(todo);
+    }
+
+    private async Task DeleteTodo(int id)
+    {
+        await Repository.DeleteAsync<ToDoItem>(id);
+        _rows.RemoveAll(t => t.ToDo.Id == id);
+    }
+
+    private async Task DeleteAll()
+    {
+        foreach (ToDoRow row in _rows)
+        {
+            await Repository.DeleteAsync<ToDoItem>(row.ToDo.Id);
+        }
+        _rows.Clear();
+    }
+
+    private List<ToDoRow> _rows = [];
+    private string? _newTodo;
+
+    private record ToDoRow(ToDoItem ToDo)
+    {
+        public bool IsEditing { get; set; }
+    }
+}

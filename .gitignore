@@ -407,3 +407,6 @@ todo.db
 
 */bin/
 */obj/
+ICC2024_1/wwwroot/css
+ICC2024_1/wwwroot/webfonts
+ICC2024_1/wwwroot/svgs
