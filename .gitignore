@@ -401,6 +401,8 @@ FodyWeavers.xsd
 .idea/
 
 wwwroot/css/
+wwwroot/svg/
+wwwroot/webfonts/
 todo.db
 
 */bin/
